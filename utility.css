@@ -1,0 +1,36 @@
+.flex {
+    display: flex;
+}
+
+.rounded {
+    border-radius: 7px;
+}
+
+.m-1 {
+    margin: 5px;
+}
+
+.invert {
+    filter: invert(1);
+}
+
+.bg-grey {
+    background: linear-gradient(135deg, #4e1d34, #5C3C91, #FFD580);
+    background-blend-mode: soft-light;
+    border-radius: 12px;
+    color: #F8E1D4
+}
+
+/* For Webkit browsers (e.g., Chrome, Safari)  */
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #333;
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background-color: #222;
+}
