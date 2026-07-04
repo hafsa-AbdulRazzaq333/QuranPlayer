@@ -1,137 +1,132 @@
 console.log('lets write javascript');
 
 let currentPlay = new Audio();
-let plays;
+
+// ✅ Array of files manually
+let plays = [
+    "Kullo nafsin zaikatul maut.mp3",
+    "Surah Ad Duha.mp3",
+    "Surah Al Ghashiyah.mp3",
+    "Surah Al-Infitar.mp3",
+    "Surah Al-Muzammil.mp3",
+    "Surah An-Naba.mp3",
+    "Surat Ash-Sharh.mp3"
+];
 
 function secondsToMinutesSeconds(seconds) {
     if (isNaN(seconds) || seconds < 0) {
         return "00:00";
     }
-
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = Math.floor(seconds % 60);
-
-    const formattedMinutes = String(minutes).padStart(2, '0');
-    const formattedSeconds = String(remainingSeconds).padStart(2, '0');
-
-    return `${formattedMinutes}:${formattedSeconds}`;
-}
-
-async function getPlays() {
-    let a = await fetch("http://127.0.0.1:3000/Plays/");
-    let response = await a.text();
-    let div = document.createElement('div')
-    div.innerHTML = response;
-    let as = div.getElementsByTagName('a')
-    let plays = []
-    for (let index = 0; index < as.length; index++) {
-        const element = as[index];
-        if (element.href.endsWith('.mp3')) {
-            plays.push(element.href.split('/Plays/')[1])
-        }
-    }
-    return plays
+    return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
 const playAudio = (track, pause = false) => {
-    // let audio = new Audio('/Plays/' + track)
-    currentPlay.src = '/Plays/' + track
+    // Relative path jo local aur live dono par kaam karega
+    currentPlay.src = 'Plays/' + track;
+
     if (!pause) {
-        currentPlay.play()
-        play.src = '/img/pause.svg'
+        currentPlay.play().catch(err => console.log("Playback interaction error:", err));
+        document.querySelector('#play').src = '../img/pause.svg';
     }
-    document.querySelector('.playinfo').innerHTML = decodeURI(track)
-    document.querySelector('.playtime').innerHTML = '00:00/00:00'
+
+    // UI par saaf suthra naam dikhane ke liye decode karein aur .mp3 hatayein
+    document.querySelector('.playinfo').innerHTML = decodeURIComponent(track).replace('.mp3', '');
+    document.querySelector('.playtime').innerHTML = '00:00 / 00:00';
 }
 
 async function main() {
-    // get the list of all plays
-    plays = await getPlays()
-    // console.log(plays)
-    playAudio(plays[0], true)
+    // Elements references safely select karein
+    const playBtn = document.querySelector('#play');
+    const prevBtn = document.querySelector('#previous');
+    const nextBtn = document.querySelector('#next');
 
-    //show all the plays in playlist
-    let playUL = document.querySelector('.playNlist').getElementsByTagName('ul')[0]
+    // 1. Pehla track load karo (paused state mein)
+    playAudio(plays[0], true);
+
+    // 2. Playlist ke andar saare plays add karein
+    let playUL = document.querySelector('.playNlist ul');
+    playUL.innerHTML = ""; // Pehle purani list clear karein
+
     for (const play of plays) {
-        // playUL.innerHTML = playUL.innerHTML + `<li> ${play.replaceAll('%20'," ")} </li>`;
-        playUL.innerHTML = playUL.innerHTML + `<li><img src="img/music.svg" class="invert" alt="">
-                            <div class="info">
-                                <div>${play.replaceAll('%20', " ")}</div>
-                                <div>reciter</div>
-                            </div>
-                            <div class="playnow">
-                                <img src="img/play.svg" class="invert" alt="">
-                            </div></li>`;
+        let cleanName = play.replace('.mp3', '');
+        playUL.innerHTML += `
+          <li>
+            <img src="../img/music.svg" class="invert" alt="" style="width:24px;">
+            <div class="info">
+              <div>${cleanName}</div>
+              <div>Qari</div>
+            </div>
+            <div class="playnow">
+              <img src="../img/play.svg" class="invert" alt="" style="width:20px;">
+            </div>
+          </li>`;
     }
 
-    //attach eventlistener to each play
-    Array.from(document.querySelector('.playNlist').getElementsByTagName('li')).forEach(e => {
-        // console.log(e.getElementsByTagName('div')[0]);
-        e.addEventListener('click', element => {
-            // console.log(e.querySelector('.info').firstElementChild.innerHTML)
-            // playAudio(e.querySelector('.info').firstElementChild.innerHTML)
-            playAudio(e.querySelector('.info').firstElementChild.innerHTML.trim())
-        })
-    })
+    // 3. Har list item par click listener lagana
+    Array.from(document.querySelectorAll('.playNlist li')).forEach((e, index) => {
+        e.addEventListener('click', () => {
+            playAudio(plays[index]);
+        });
+    });
 
-    //attach an eventlistener to previous, play amd next
-    play.addEventListener('click', () => {
+    // 4. Play/Pause button setup
+    playBtn.addEventListener('click', () => {
         if (currentPlay.paused) {
-            currentPlay.play()
-            play.src = '/img/pause.svg'
+            currentPlay.play();
+            playBtn.src = '../img/pause.svg';
         } else {
-            currentPlay.pause()
-            play.src = '/img/play.svg'
+            currentPlay.pause();
+            playBtn.src = '../img/play.svg';
         }
-    })
+    });
 
-    // listen for timeupdate
+    // 5. Time and seekbar circle update
     currentPlay.addEventListener('timeupdate', () => {
-        console.log(currentPlay.timeupdate, currentPlay.duration);
-        document.querySelector('.playtime').innerHTML = `${secondsToMinutesSeconds(currentPlay.currentTime)}/
-        ${secondsToMinutesSeconds(currentPlay.duration)}`
-        document.querySelector('.circle').style.left = (currentPlay.currentTime / currentPlay.duration) * 100 + '%';
-    })
+        document.querySelector('.playtime').innerHTML =
+            `${secondsToMinutesSeconds(currentPlay.currentTime)} / ${secondsToMinutesSeconds(currentPlay.duration)}`;
 
-    // add an eventlistener to seekbar
+        let progress = (currentPlay.currentTime / currentPlay.duration) * 100;
+        document.querySelector('.circle').style.left = (progress || 0) + '%';
+    });
+
+    // 6. Seekbar manipulation
     document.querySelector('.seekbar').addEventListener('click', e => {
         let percent = (e.offsetX / e.target.getBoundingClientRect().width) * 100;
         document.querySelector(".circle").style.left = percent + "%";
-        currentPlay.currentTime = ((currentPlay.duration) * percent) / 100
-    })
+        currentPlay.currentTime = ((currentPlay.duration) * percent) / 100;
+    });
 
-    // Add an event listener for hamburger
+    // 7. Hamburger Responsive Toggle
     document.querySelector(".hamburger").addEventListener("click", () => {
-        document.querySelector(".left").style.left = "0"
-    })
-
-    // Add an event listener for close button
+        document.querySelector(".left").style.left = "0";
+    });
     document.querySelector(".close").addEventListener("click", () => {
-        document.querySelector(".left").style.left = "-120%"
-    })
+        document.querySelector(".left").style.left = "-120%";
+    });
 
-    // add an eventlistener to previous and next
-    previous.addEventListener('click', () => {
-        currentPlay.pause()
-        // console.log('currentPlay clicked');
-        let index = plays.indexOf(currentPlay.src.split('/').slice(-1)[0])
+    // 8. Previous Button Logic (with %20 fix)
+    prevBtn.addEventListener('click', () => {
+        let currentTrackFile = currentPlay.src.split('/').slice(-1)[0];
+        let decodedTrack = decodeURIComponent(currentTrackFile);
+        let index = plays.indexOf(decodedTrack);
+
         if ((index - 1) >= 0) {
-            playAudio(plays[index - 1])
+            playAudio(plays[index - 1]);
         }
-    })
-    next.addEventListener('click', () => {
-        currentPlay.pause()
-        // console.log('previousPlay clicked');
-        let index = plays.indexOf(currentPlay.src.split('/').slice(-1)[0])
+    });
+
+    // 9. Next Button Logic (with %20 fix)
+    nextBtn.addEventListener('click', () => {
+        let currentTrackFile = currentPlay.src.split('/').slice(-1)[0];
+        let decodedTrack = decodeURIComponent(currentTrackFile);
+        let index = plays.indexOf(decodedTrack);
+
         if ((index + 1) < plays.length) {
-            playAudio(plays[index + 1])
+            playAudio(plays[index + 1]);
         }
-    })
-
+    });
 }
-main()
 
-
-
-
-
+main();
