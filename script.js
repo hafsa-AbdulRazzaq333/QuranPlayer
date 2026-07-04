@@ -1,7 +1,6 @@
 console.log('lets write javascript');
 
 let currentPlay = new Audio();
-let isPlaying = false;
 
 // ✅ Array of files manually
 let plays = [
@@ -23,31 +22,32 @@ function secondsToMinutesSeconds(seconds) {
     return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
-// Function to safely update the Play/Pause button image everywhere
-function updatePlayButtonUI(pausedState) {
+// Global function to change button icon instantly
+function togglePlayIcon(isPlaying) {
     const playBtn = document.querySelector('#play');
     if (playBtn) {
-        playBtn.src = pausedState ? '../img/play.svg' : '../img/pause.svg';
+        playBtn.src = isPlaying ? '../img/pause.svg' : '../img/play.svg';
     }
 }
 
 const playAudio = (track, pause = false) => {
-    // Relative path jo Vercel aur Local dono par sahi chalega
+    // Relative path configuration
     currentPlay.src = 'Plays/' + track;
 
     if (!pause) {
         currentPlay.play()
             .then(() => {
-                isPlaying = true;
-                updatePlayButtonUI(false);
+                togglePlayIcon(true);
             })
-            .catch(err => console.log("Playback interaction error:", err));
+            .catch(err => {
+                console.log("Playback failed or interrupted:", err);
+                togglePlayIcon(false);
+            });
     } else {
-        isPlaying = false;
-        updatePlayButtonUI(true);
+        togglePlayIcon(false);
     }
 
-    // UI par track ka naam update karna
+    // Update song details in playbar
     document.querySelector('.playinfo').innerHTML = decodeURIComponent(track).replace('.mp3', '');
     document.querySelector('.playtime').innerHTML = '00:00 / 00:00';
 }
@@ -57,10 +57,10 @@ async function main() {
     const prevBtn = document.querySelector('#previous');
     const nextBtn = document.querySelector('#next');
 
-    // 1. Pehla track load karo (paused state mein)
+    // 1. Load first track initially (in paused state)
     playAudio(plays[0], true);
 
-    // 2. Playlist ke andar saare plays add karein
+    // 2. Render playlist items dynamically
     let playUL = document.querySelector('.playNlist ul');
     playUL.innerHTML = "";
 
@@ -79,24 +79,26 @@ async function main() {
           </li>`;
     }
 
-    // 3. Har list item par click listener lagana
+    // 3. Playlist items click event
     Array.from(document.querySelectorAll('.playNlist li')).forEach((e, index) => {
         e.addEventListener('click', () => {
-            playAudio(plays[index]);
+            playAudio(plays[index], false); // Force play the selected track
         });
     });
 
-    // 4. Play/Pause button toggle logic
+    // 4. Central Play/Pause button setup
     playBtn.addEventListener('click', () => {
         if (currentPlay.paused) {
-            currentPlay.play().then(() => updatePlayButtonUI(false));
+            currentPlay.play()
+                .then(() => togglePlayIcon(true))
+                .catch(err => console.log(err));
         } else {
             currentPlay.pause();
-            updatePlayButtonUI(true);
+            togglePlayIcon(false);
         }
     });
 
-    // 5. Time aur seekbar circle update
+    // 5. Progress seekbar and timer updates
     currentPlay.addEventListener('timeupdate', () => {
         document.querySelector('.playtime').innerHTML =
             `${secondsToMinutesSeconds(currentPlay.currentTime)} / ${secondsToMinutesSeconds(currentPlay.duration)}`;
@@ -105,14 +107,14 @@ async function main() {
         document.querySelector('.circle').style.left = (progress || 0) + '%';
     });
 
-    // 6. Seekbar manipulation
+    // 6. Manual seekbar clicking control
     document.querySelector('.seekbar').addEventListener('click', e => {
         let percent = (e.offsetX / e.target.getBoundingClientRect().width) * 100;
         document.querySelector(".circle").style.left = percent + "%";
         currentPlay.currentTime = ((currentPlay.duration) * percent) / 100;
     });
 
-    // 7. Hamburger Responsive Toggle
+    // 7. Hamburger Responsive Drawer
     document.querySelector(".hamburger").addEventListener("click", () => {
         document.querySelector(".left").style.left = "0";
     });
@@ -120,25 +122,25 @@ async function main() {
         document.querySelector(".left").style.left = "-120%";
     });
 
-    // 8. Previous Button Logic
+    // 8. Previous Button Functionality
     prevBtn.addEventListener('click', () => {
         let currentTrackFile = currentPlay.src.split('/').slice(-1)[0];
         let decodedTrack = decodeURIComponent(currentTrackFile);
         let index = plays.indexOf(decodedTrack);
 
         if ((index - 1) >= 0) {
-            playAudio(plays[index - 1]);
+            playAudio(plays[index - 1], false);
         }
     });
 
-    // 9. Next Button Logic
+    // 9. Next Button Functionality
     nextBtn.addEventListener('click', () => {
         let currentTrackFile = currentPlay.src.split('/').slice(-1)[0];
         let decodedTrack = decodeURIComponent(currentTrackFile);
         let index = plays.indexOf(decodedTrack);
 
         if ((index + 1) < plays.length) {
-            playAudio(plays[index + 1]);
+            playAudio(plays[index + 1], false);
         }
     });
 }
