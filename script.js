@@ -1,6 +1,7 @@
 console.log('lets write javascript');
 
 let currentPlay = new Audio();
+let isPlaying = false;
 
 // ✅ Array of files manually
 let plays = [
@@ -22,22 +23,36 @@ function secondsToMinutesSeconds(seconds) {
     return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
+// Function to safely update the Play/Pause button image everywhere
+function updatePlayButtonUI(pausedState) {
+    const playBtn = document.querySelector('#play');
+    if (playBtn) {
+        playBtn.src = pausedState ? '../img/play.svg' : '../img/pause.svg';
+    }
+}
+
 const playAudio = (track, pause = false) => {
-    // Relative path jo local aur live dono par kaam karega
+    // Relative path jo Vercel aur Local dono par sahi chalega
     currentPlay.src = 'Plays/' + track;
 
     if (!pause) {
-        currentPlay.play().catch(err => console.log("Playback interaction error:", err));
-        document.querySelector('#play').src = '../img/pause.svg';
+        currentPlay.play()
+            .then(() => {
+                isPlaying = true;
+                updatePlayButtonUI(false);
+            })
+            .catch(err => console.log("Playback interaction error:", err));
+    } else {
+        isPlaying = false;
+        updatePlayButtonUI(true);
     }
 
-    // UI par saaf suthra naam dikhane ke liye decode karein aur .mp3 hatayein
+    // UI par track ka naam update karna
     document.querySelector('.playinfo').innerHTML = decodeURIComponent(track).replace('.mp3', '');
     document.querySelector('.playtime').innerHTML = '00:00 / 00:00';
 }
 
 async function main() {
-    // Elements references safely select karein
     const playBtn = document.querySelector('#play');
     const prevBtn = document.querySelector('#previous');
     const nextBtn = document.querySelector('#next');
@@ -47,7 +62,7 @@ async function main() {
 
     // 2. Playlist ke andar saare plays add karein
     let playUL = document.querySelector('.playNlist ul');
-    playUL.innerHTML = ""; // Pehle purani list clear karein
+    playUL.innerHTML = "";
 
     for (const play of plays) {
         let cleanName = play.replace('.mp3', '');
@@ -71,18 +86,17 @@ async function main() {
         });
     });
 
-    // 4. Play/Pause button setup
+    // 4. Play/Pause button toggle logic
     playBtn.addEventListener('click', () => {
         if (currentPlay.paused) {
-            currentPlay.play();
-            playBtn.src = '../img/pause.svg';
+            currentPlay.play().then(() => updatePlayButtonUI(false));
         } else {
             currentPlay.pause();
-            playBtn.src = '../img/play.svg';
+            updatePlayButtonUI(true);
         }
     });
 
-    // 5. Time and seekbar circle update
+    // 5. Time aur seekbar circle update
     currentPlay.addEventListener('timeupdate', () => {
         document.querySelector('.playtime').innerHTML =
             `${secondsToMinutesSeconds(currentPlay.currentTime)} / ${secondsToMinutesSeconds(currentPlay.duration)}`;
@@ -106,7 +120,7 @@ async function main() {
         document.querySelector(".left").style.left = "-120%";
     });
 
-    // 8. Previous Button Logic (with %20 fix)
+    // 8. Previous Button Logic
     prevBtn.addEventListener('click', () => {
         let currentTrackFile = currentPlay.src.split('/').slice(-1)[0];
         let decodedTrack = decodeURIComponent(currentTrackFile);
@@ -117,7 +131,7 @@ async function main() {
         }
     });
 
-    // 9. Next Button Logic (with %20 fix)
+    // 9. Next Button Logic
     nextBtn.addEventListener('click', () => {
         let currentTrackFile = currentPlay.src.split('/').slice(-1)[0];
         let decodedTrack = decodeURIComponent(currentTrackFile);
